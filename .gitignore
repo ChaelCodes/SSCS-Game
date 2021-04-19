@@ -1,0 +1,9 @@
+# Ignore Builds
+dragonruby-windows-amd64/.dragonruby/tmptree
+dragonruby-windows-amd64/builds
+dragonruby-windows-amd64/docs
+dragonruby-windows-amd64/exceptions
+dragonruby-windows-amd64/logs
+dragonruby-windows-amd64/samples
+dragonruby-windows-amd64/tmp
+

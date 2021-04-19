@@ -1,0 +1,5 @@
+# itch.io manifest...
+[[actions]]
+name = "launch"
+path = "dragonruby-windows-amd64/dragonruby.exe"
+
