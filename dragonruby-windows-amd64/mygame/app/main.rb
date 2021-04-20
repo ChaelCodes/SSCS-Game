@@ -1,5 +1,5 @@
-require 'app/logic/inverse_meter.rb'
 require 'app/logic/meter.rb'
+require 'app/logic/inverse_meter.rb'
 require 'app/logic/store.rb'
 require 'app/logic/task.rb'
 
