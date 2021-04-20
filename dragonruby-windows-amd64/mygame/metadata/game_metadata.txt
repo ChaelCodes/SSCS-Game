@@ -2,6 +2,6 @@ devid=ChaelCodes
 devtitle=ChaelCodes
 gameid=sscs-game
 gametitle=Sadistic Self-Care Survival Game
-version=2.2
+version=2.3
 icon=metadata/icon.png
 compile_ruby=false

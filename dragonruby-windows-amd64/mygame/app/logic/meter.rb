@@ -1,6 +1,6 @@
 class Meter
   attr_gtk
-  attr :args, :row, :col, :color, :death_message, :rate, :state_prop
+  attr :row, :col, :color, :death_message, :rate, :state_prop
 
   def initialize(args:, row:, col:, color:, death_message: 'You died.', rate: 0.001, state_prop:)
     self.args = args
@@ -13,7 +13,7 @@ class Meter
   end
 
   def defaults
-    args.state[state_prop] ||= 1.0
+    state[state_prop] ||= 1.0
   end
 
   def render

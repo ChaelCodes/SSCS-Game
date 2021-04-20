@@ -1,4 +1,5 @@
 class Task
+  attr_gtk
   attr :args
 
   def initialize(args)
@@ -21,6 +22,7 @@ class Task
 
   def calc
     args.state.task_progress += (args.state.task_rate * 0.001)
+    reset_progress if state.store
     if args.state.task_progress >= 1
       args.state.money += 50
       args.state.task_progress -= 1

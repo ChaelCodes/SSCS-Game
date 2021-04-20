@@ -1,16 +1,18 @@
 require 'app/logic/meter.rb'
+require 'app/logic/store.rb'
 require 'app/logic/task.rb'
 
 class Game
   attr_gtk
+  attr :meters
 
   def initialize(args)
-    @food_meter = Meter.new(args: args, row: 0, col: 0, color: {r: 100, g: 180, b: 100}, death_message: 'Why did you starve yourself?', state_prop: :food)
-    @water_meter = Meter.new(args: args, row: 0, col:23, color: {r: 78, g: 175, b: 215}, death_message: "Your body is 62% water, and you didn't give it any.", rate: 0.002, state_prop: :water)
+    self.args = args
     @water_bottle = { x: 1050, y: 105, w: 100, h: 266, path: 'sprites/bottle-small.png'}
     @granola_bar = { x: 20, y: 80, w: 226, h: 101, angle: 317, path: 'sprites/granola-small.png'}
-    @store = { x: 575, y: 340, w: 50, h: 50, path: 'sprites/cart.png'}
-    @store_granola_bar = args.layout.rect(col: 6, row: 2, w: 2, h: 2).merge(r: 200, g: 200, b: 200, a: 200).solid
+    @store = Store.new(args: args)
+    @store_icon = { x: 575, y: 340, w: 50, h: 50, path: 'sprites/cart.png'}
+    init_meters
     @task = Task.new(args)
   end
 
@@ -27,8 +29,7 @@ class Game
     state.granola_count ||= 10
     state.money ||= 0
     @task.defaults
-    @food_meter.defaults
-    @water_meter.defaults
+    meters.each(&:defaults)
   end
 
   # Render Order
@@ -50,7 +51,7 @@ class Game
     end
     
     if state.store && state.scene == :game
-      laptop_store_scene
+      @store.laptop_store_scene
     end
   end
 
@@ -69,15 +70,8 @@ class Game
           state.granola_count -= 1
         end
       end
-      if args.inputs.mouse.click.intersect_rect? @store
-        state.store = true
-        @task.reset_progress
-      end
-      if args.inputs.mouse.click.intersect_rect? @store_granola_bar
-        if state.money > 2
-          state.money -= 2
-          state.granola_count += 1
-        end
+      if args.inputs.mouse.click.intersect_rect? @store_icon
+        @store.open
       end
     end
     if args.inputs.keyboard.key_down.w
@@ -89,10 +83,16 @@ class Game
         state.granola_count -= 1
       end
     end
+    # Open/Close the store
     if args.inputs.keyboard.key_down.s
-      state.store = !state.store
+      state.store ? @store.close : @store.open
     end
-    state.scene = state.scene == :pause ? :game : :pause if inputs.keyboard.key_down.p
+    if state.store
+      @store.input
+    end
+    if inputs.keyboard.key_down.p
+      state.scene = state.scene == :pause ? :game : :pause
+    end
     # save
     if args.inputs.keyboard.key_down.t
       $gtk.save_state
@@ -106,10 +106,10 @@ class Game
   def calc
     return if [:death, :pause].include?(state.scene)
     state.task_rate = 1.0
-    @food_meter.calc
-    return die(@food_meter.death_message) if @food_meter.empty?
-    @water_meter.calc
-    return die(@water_meter.death_message) if @water_meter.empty?
+    meters.each do |meter|
+      meter.calc
+      return die(meter.death_message) if meter.empty?
+    end
     @task.calc
   end
 
@@ -131,10 +131,9 @@ class Game
   end
 
   def game_scene
-    outputs.labels  << [600, 620, 'Sadistic Self-Care Survial Game!', 5, 1]
+    outputs.labels  << [600, 620, 'Sadistic Self-Care Survival Game!', 5, 1]
+    outputs.primitives << meters.map(&:render)
     outputs.primitives << [
-      @food_meter.render, 
-      @water_meter.render,
       @task.render,
       { x: 340, y: 370, text: "Money: $#{state.money}", size_enum: 5, alignment_enum: align(:left) }.label,
       { x: 80, y: 90, text: state.granola_count }.label
@@ -145,7 +144,14 @@ class Game
       [0, 0, 1280, 720, 'sprites/laptop.png'],
       @water_bottle,
       @granola_bar,
-      @store
+      @store_icon
+    ]
+  end
+
+  def init_meters
+    self.meters = [
+      Meter.new(args: args, row: 0, col: 0, color: {r: 100, g: 180, b: 100}, death_message: 'Why did you starve yourself?', rate: 0.0005, state_prop: :food),
+      Meter.new(args: args, row: 0, col:23, color: {r: 78, g: 175, b: 215}, death_message: "Your body is 62% water, and you didn't give it any.", rate: 0.001, state_prop: :water)
     ]
   end
 
@@ -156,17 +162,6 @@ class Game
     ]
   end
 
-  def laptop_store_scene
-    args.outputs.primitives << [
-      {x: 330, y: 335, w: 556, h: 308, r: 100, g: 100, b: 100}.solid,
-      @store_granola_bar,
-      args.layout.rect(col: 6, row: 2, w: 2, h: 2, dx: 1, dy: 20).merge(text: "Granola Bar", size_enum: -1.5).label,
-      args.layout.rect(col: 6, row: 2, w: 2, h: 2, dx: 1, dy: 10).merge(text: "$2").label,
-      { x: 333, y: 510, w: 226 * 0.4, h: 101 * 0.4, path: 'sprites/granola-small.png' }.sprite,
-      # args.layout.rect(col: 8, row: 2, w: 2, h: 2).merge(r: 200, g: 200, b: 200, a: 200).solid
-    ]
-  end
-
   def reset
     Kernel.tick_count = 0
     state.death = false
@@ -174,8 +169,8 @@ class Game
     state.death_message = nil
     state.money = 0
     state.granola_count = 10
-    @food_meter.reset
-    @water_meter.reset
+    @store.reset
+    meters.each(&:reset)
     @task.reset
   end
 end
