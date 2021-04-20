@@ -10,8 +10,9 @@ class Store
 
   def init_items
     self.items = []
-    items << Store::Item.new(args, "Granola Bar", 2, 'sprites/granola-small.png', 6, 2)
-    items << Store::Item.new(args, "Organic Bar", 3, 'sprites/granola-small.png', 8, 2)
+    give_granola = Proc.new { args.state.granola_count += 1 }
+    items << Store::Item.new(args, "Granola Bar", 2, 'sprites/granola-small.png', 6, 2, give_granola)
+    items << Store::Item.new(args, "Organic Bar", 3, 'sprites/granola-small.png', 8, 2, give_granola)
   end
 
   def input
@@ -48,7 +49,7 @@ class Store
     args.state.store = false
   end
 
-  Item = Struct.new :args, :name, :cost, :sprite, :col, :row do
+  Item = Struct.new :args, :name, :cost, :sprite, :col, :row, :proc do
     def background
       args.layout.rect(col: col, row: row, w: 2, h: 2).merge(r: 200, g: 200, b: 200, a: 200).solid
     end
@@ -65,7 +66,7 @@ class Store
     def buy
       if args.state.money >= cost
         args.state.money -= cost
-        args.state.granola_count += 1
+        proc.call
       end
     end
   end
