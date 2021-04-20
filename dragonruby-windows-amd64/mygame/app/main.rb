@@ -1,3 +1,4 @@
+require 'app/logic/inverse_meter.rb'
 require 'app/logic/meter.rb'
 require 'app/logic/store.rb'
 require 'app/logic/task.rb'
@@ -12,6 +13,7 @@ class Game
     @granola_bar = { x: 20, y: 80, w: 226, h: 101, angle: 317, path: 'sprites/granola-small.png'}
     @store = Store.new(args: args)
     @store_icon = { x: 575, y: 340, w: 50, h: 50, path: 'sprites/cart.png'}
+    @scene_button = { x: 485, y: 0, w: 260, h: 75, r: 20, g: 20, b: 20, a: 100}.solid
     init_meters
     @task = Task.new(args)
   end
@@ -46,6 +48,8 @@ class Game
         death_scene
       when :pause
         pause_scene
+      when :break
+        break_scene
       else
         game_scene
     end
@@ -73,6 +77,12 @@ class Game
       if args.inputs.mouse.click.intersect_rect? @store_icon
         @store.open
       end
+      if args.inputs.mouse.click.intersect_rect? @scene_button
+        state.scene = state.scene == :break ? :game : :break
+      end
+    end
+    if args.inputs.keyboard.key_down.b
+      state.scene = state.scene == :break ? :game : :break
     end
     if args.inputs.keyboard.key_down.w
       state.water += 0.1
@@ -87,9 +97,6 @@ class Game
     if args.inputs.keyboard.key_down.s
       state.store ? @store.close : @store.open
     end
-    if state.store
-      @store.input
-    end
     if inputs.keyboard.key_down.p
       state.scene = state.scene == :pause ? :game : :pause
     end
@@ -101,14 +108,18 @@ class Game
     if args.inputs.keyboard.key_down.r
       $gtk.load_state
     end
+    if state.store
+      @store.input
+    end
   end
 
   def calc
     return if [:death, :pause].include?(state.scene)
     state.task_rate = 1.0
+    state.pee -= 0.005 if state.scene == :break
     meters.each do |meter|
       meter.calc
-      return die(meter.death_message) if meter.empty?
+      return die(meter.death_message) if meter.dead?
     end
     @task.calc
   end
@@ -121,6 +132,15 @@ class Game
   end
 
   # Scenes
+  def break_scene
+    outputs.primitives << [
+      { w: 1280, h: 720, r: 4, g: 20, b: 69 }.solid,
+      @scene_button,
+      { x: 500, y: 66, text: 'Back to Work', size_enum: 10, r: 250, g: 250, b: 250 }.label
+    ]
+    outputs.primitives << meters.map(&:render)
+  end
+
   def death_scene
     outputs.primitives << [
       { w: 1280, h: 720, r: 0, g: 0, b: 0}.solid,
@@ -136,7 +156,9 @@ class Game
     outputs.primitives << [
       @task.render,
       { x: 340, y: 370, text: "Money: $#{state.money}", size_enum: 5, alignment_enum: align(:left) }.label,
-      { x: 80, y: 90, text: state.granola_count }.label
+      { x: 80, y: 90, text: state.granola_count }.label,
+      @scene_button,
+      { x: 500, y: 66, text: 'Take a Break', size_enum: 10, r: 250, g: 250, b: 250 }.label
     ]
     outputs.debug << [30, 30.from_top, "#{args.inputs.mouse.point}"].label
     # Sprites
@@ -151,7 +173,8 @@ class Game
   def init_meters
     self.meters = [
       Meter.new(args: args, row: 0, col: 0, color: {r: 100, g: 180, b: 100}, death_message: 'Why did you starve yourself?', rate: 0.0005, state_prop: :food),
-      Meter.new(args: args, row: 0, col:23, color: {r: 78, g: 175, b: 215}, death_message: "Your body is 62% water, and you didn't give it any.", rate: 0.001, state_prop: :water)
+      Meter.new(args: args, row: 0, col:23, color: {r: 78, g: 175, b: 215}, death_message: "Your body is 62% water, and you didn't give it any.", rate: 0.001, state_prop: :water),
+      InverseMeter.new(args: args, row: 0, col:22, color: {r: 218, g: 197, b: 32 }, death_message: "Ewwwww.....", rate: -0.0001, state_prop: :pee)
     ]
   end
 

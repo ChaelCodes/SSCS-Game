@@ -22,7 +22,7 @@ class Task
 
   def calc
     args.state.task_progress += (args.state.task_rate * 0.001)
-    reset_progress if state.store
+    reset_progress if state.store || state.scene == :break
     if args.state.task_progress >= 1
       args.state.money += 50
       args.state.task_progress -= 1

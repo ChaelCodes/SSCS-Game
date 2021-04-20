@@ -27,11 +27,15 @@ class Meter
 
   def calc
     args.state[state_prop] -= rate
-    args.state.task_rate *= args.state[state_prop]
+    args.state.task_rate *= debuff
     args.state[state_prop] = args.state[state_prop].clamp(0, 1.0)
   end
 
-  def empty?
+  def debuff
+    args.state[state_prop]
+  end
+
+  def dead?
     args.state[state_prop].zero?
   end
 
